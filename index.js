@@ -1,177 +1,258 @@
-
-// ==========================================
-// RAWG API
-// ==========================================
-
-// Replace this with your NEW RAWG API key.
 const RAWG_API_KEY = "a2561719714843748c904cec88fbc08d";
 
-const API_URL =
-  `https://api.rawg.io/api/games?key=${RAWG_API_KEY}` +
-  `&dates=2019-09-01,2019-09-30&platforms=18,1&page_size=40`;
+const API_URL = `https://api.rawg.io/api/games?key=${RAWG_API_KEY}&dates=2019-09-01,2019-09-30&platforms=18,1&page_size=40`;
 
-// ==========================================
-// DOM ELEMENTS
-// ==========================================
+const PLATFORMS_API_URL = `https://api.rawg.io/api/platforms?key=${RAWG_API_KEY}`;
 
-const gamesList = document.getElementById("games__list");
-const searchInput = document.getElementById("search__input");
-const searchButton = document.getElementById("search__button");
-const sortSelect = document.getElementById("sort__select");
 
-const loadingState = document.getElementById("loading__state");
-const apiError = document.getElementById("api__error");
-const apiErrorMessage = document.getElementById("api__error--message");
-const retryButton = document.getElementById("retry__button");
+/* ================================
+   DOM ELEMENTS
+================================ */
 
-const noResults = document.getElementById("no__results");
-const resultsCount = document.getElementById("results__count");
+const searchInput = document.querySelector("#search__input");
+const searchButton = document.querySelector("#search__button");
+const sortSelect = document.querySelector("#sort__select");
 
-const navMenu = document.getElementById("nav__menu");
-const navLinkList = document.querySelector(".nav__link--list");
+const gamesList = document.querySelector("#games__list");
+const loadingState = document.querySelector("#loading__state");
+const apiError = document.querySelector("#api__error");
+const apiErrorMessage = document.querySelector("#api__error--message");
+const retryButton = document.querySelector("#retry__button");
+const resultsCount = document.querySelector("#results__count");
+const noResults = document.querySelector("#no__results");
 
-// ======================================
-// STATE
-// ==========================================
+const navMenu = document.querySelector(".nav__menu");
+const navLinks = document.querySelector(".nav__link--list");
+
+
+/* ================================
+   STATE
+================================ */
 
 let allGames = [];
+let allPlatforms = [];
+let selectedPlatform = "all";
 
-// ==========================================
-// START
-// ==========================================
+
+/* ================================
+   START APPLICATION
+================================ */
 
 document.addEventListener("DOMContentLoaded", () => {
-  fetchGames();
+  createPlatformFilter();
   setupEventListeners();
+  fetchData();
 });
 
-// ==========================================
-// EVENT LISTENERS
-// ==========================================
 
-function setupEventListeners() {
-  if (searchButton) {
-    searchButton.addEventListener("click", handleSearch);
-  }
+/* ================================
+   FETCH GAMES + PLATFORMS
+================================ */
 
-  if (searchInput) {
-    searchInput.addEventListener("keydown", (event) => {
-      if (event.key === "Enter") {
-        handleSearch();
-      }
-    });
-
-    searchInput.addEventListener("input", filterAndRenderGames);
-  }
-
-  if (sortSelect) {
-    sortSelect.addEventListener("change", filterAndRenderGames);
-  }
-
-  if (retryButton) {
-    retryButton.addEventListener("click", fetchGames);
-  }
-
-  if (navMenu && navLinkList) {
-    navMenu.addEventListener("click", () => {
-      navLinkList.classList.toggle("nav__link--list--open");
-    });
-
-    document.querySelectorAll(".nav__link").forEach((link) => {
-      link.addEventListener("click", () => {
-        navLinkList.classList.remove("nav__link--list--open");
-      });
-    });
-  }
-}
-
-// ==========================================
-// FETCH GAMES FROM RAWG API
-// ==========================================
-
-async function fetchGames() {
+async function fetchData() {
   showLoading();
   hideError();
   hideNoResults();
 
-  if (gamesList) {
-    gamesList.innerHTML = "";
-  }
-
-  if (resultsCount) {
-    resultsCount.textContent = "";
-  }
-
   try {
-    const response = await fetch(API_URL);
+    const [gamesResponse, platformsResponse] = await Promise.all([
+      fetch(API_URL),
+      fetch(PLATFORMS_API_URL)
+    ]);
 
-    if (!response.ok) {
-      throw new Error(
-        `The API returned an error (${response.status}).`
-      );
+    if (!gamesResponse.ok) {
+      throw new Error("Unable to load the games from RAWG.");
     }
 
-    const data = await response.json();
-
-    if (!data.results || !Array.isArray(data.results)) {
-      throw new Error("The API returned an unexpected response.");
+    if (!platformsResponse.ok) {
+      throw new Error("Unable to load the platforms from RAWG.");
     }
 
-    allGames = data.results;
+    const gamesData = await gamesResponse.json();
+    const platformsData = await platformsResponse.json();
 
-    hideLoading();
+    if (!gamesData.results) {
+      throw new Error("The games API returned an unexpected response.");
+    }
+
+    if (!platformsData.results) {
+      throw new Error("The platforms API returned an unexpected response.");
+    }
+
+    allGames = gamesData.results;
+    allPlatforms = platformsData.results;
+
+    updatePlatformFilter();
+
     filterAndRenderGames();
-
   } catch (error) {
     console.error("RAWG API Error:", error);
 
-    hideLoading();
-
     showError(
       error.message ||
-        "Something went wrong while loading the games."
+      "Something went wrong while loading the games."
     );
   }
 }
 
-// ==========================================
-// SEARCH
-// ==========================================
 
-function handleSearch() {
-  filterAndRenderGames();
+/* ================================
+   PLATFORM FILTER
+================================ */
 
-  const gamesSection = document.getElementById("games");
+function createPlatformFilter() {
+  const filtersContainer = document.querySelector(".games__filters");
 
-  if (gamesSection) {
-    gamesSection.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
+  if (!filtersContainer) {
+    return;
+  }
+
+  const platformSelect = document.createElement("select");
+
+  platformSelect.className = "sort__select";
+  platformSelect.id = "platform__select";
+  platformSelect.setAttribute("aria-label", "Filter games by platform");
+
+  platformSelect.innerHTML = `
+    <option value="all">All Platforms</option>
+  `;
+
+  filtersContainer.insertBefore(
+    platformSelect,
+    sortSelect
+  );
+
+  platformSelect.addEventListener("change", (event) => {
+    selectedPlatform = event.target.value;
+    filterAndRenderGames();
+  });
+}
+
+
+function updatePlatformFilter() {
+  const platformSelect = document.querySelector("#platform__select");
+
+  if (!platformSelect) {
+    return;
+  }
+
+  /*
+    Get the platform IDs that actually appear
+    in the games returned by the Games API.
+  */
+
+  const platformIds = new Set();
+
+  allGames.forEach((game) => {
+    if (!game.platforms) {
+      return;
+    }
+
+    game.platforms.forEach((item) => {
+      if (item.platform && item.platform.id) {
+        platformIds.add(item.platform.id);
+      }
+    });
+  });
+
+  /*
+    Match those IDs with the names returned
+    by the Platforms API.
+  */
+
+  const availablePlatforms = allPlatforms
+    .filter((platform) => platformIds.has(platform.id))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  platformSelect.innerHTML = `
+    <option value="all">All Platforms</option>
+  `;
+
+  availablePlatforms.forEach((platform) => {
+    const option = document.createElement("option");
+
+    option.value = platform.id;
+    option.textContent = platform.name;
+
+    platformSelect.appendChild(option);
+  });
+
+  platformSelect.value = selectedPlatform;
+}
+
+
+/* ================================
+   EVENT LISTENERS
+================================ */
+
+function setupEventListeners() {
+  searchButton.addEventListener("click", () => {
+    filterAndRenderGames();
+  });
+
+  searchInput.addEventListener("input", () => {
+    filterAndRenderGames();
+  });
+
+  searchInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      filterAndRenderGames();
+    }
+  });
+
+  sortSelect.addEventListener("change", () => {
+    filterAndRenderGames();
+  });
+
+  retryButton.addEventListener("click", () => {
+    fetchData();
+  });
+
+  if (navMenu && navLinks) {
+    navMenu.addEventListener("click", () => {
+      navLinks.classList.toggle("nav__link--list--open");
     });
   }
 }
 
-function filterGames(games, searchTerm) {
-  if (!searchTerm) {
-    return games;
-  }
 
-  return games.filter((game) =>
-    game.name
+/* ================================
+   FILTER + SORT + RENDER
+================================ */
+
+function filterAndRenderGames() {
+  const searchTerm = searchInput.value.trim().toLowerCase();
+
+  let filteredGames = allGames.filter((game) => {
+    const matchesSearch = game.name
       .toLowerCase()
-      .includes(searchTerm.toLowerCase())
-  );
+      .includes(searchTerm);
+
+    const matchesPlatform =
+      selectedPlatform === "all" ||
+      game.platforms?.some(
+        (item) =>
+          item.platform &&
+          item.platform.id === Number(selectedPlatform)
+      );
+
+    return matchesSearch && matchesPlatform;
+  });
+
+  filteredGames = sortGames(filteredGames);
+
+  renderGames(filteredGames);
 }
 
-// ==========================================
-// SORTING
-// ==========================================
 
-function sortGames(games, sortType) {
+/* ================================
+   SORT GAMES
+================================ */
+
+function sortGames(games) {
   const sortedGames = [...games];
 
-  switch (sortType) {
-
+  switch (sortSelect.value) {
     case "az":
       return sortedGames.sort((a, b) =>
         a.name.localeCompare(b.name)
@@ -183,87 +264,46 @@ function sortGames(games, sortType) {
       );
 
     case "newest":
-      return sortedGames.sort(
-        (a, b) =>
-          getDateValue(b.released) -
-          getDateValue(a.released)
-      );
+      return sortedGames.sort((a, b) => {
+        const dateA = new Date(a.released || 0);
+        const dateB = new Date(b.released || 0);
+
+        return dateB - dateA;
+      });
 
     case "oldest":
-      return sortedGames.sort(
-        (a, b) =>
-          getDateValue(a.released) -
-          getDateValue(b.released)
-      );
+      return sortedGames.sort((a, b) => {
+        const dateA = new Date(a.released || 0);
+        const dateB = new Date(b.released || 0);
+
+        return dateA - dateB;
+      });
 
     default:
       return sortedGames;
   }
 }
 
-function getDateValue(date) {
-  if (!date) {
-    return 0;
-  }
 
-  const timestamp = new Date(date).getTime();
-
-  return Number.isNaN(timestamp) ? 0 : timestamp;
-}
-
-// ==========================================
-// FILTER + SORT + RENDER
-// ==========================================
-
-function filterAndRenderGames() {
-  const searchTerm = searchInput
-    ? searchInput.value.trim()
-    : "";
-
-  const sortType = sortSelect
-    ? sortSelect.value
-    : "default";
-
-  let filteredGames = filterGames(
-    allGames,
-    searchTerm
-  );
-
-  filteredGames = sortGames(
-    filteredGames,
-    sortType
-  );
-
-  renderGames(filteredGames);
-}
-
-// ==========================================
-// CREATE GAME CARDS
-// ==========================================
+/* ================================
+   RENDER GAMES
+================================ */
 
 function renderGames(games) {
-  if (!gamesList) {
-    return;
-  }
+  hideLoading();
 
   gamesList.innerHTML = "";
 
-  if (resultsCount) {
-    resultsCount.textContent =
-      games.length === 1
-        ? "Showing 1 game"
-        : `Showing ${games.length} games`;
-  }
+  resultsCount.textContent =
+    `${games.length} game${games.length === 1 ? "" : "s"} found`;
 
   if (games.length === 0) {
-
-    if (noResults) {
-      noResults.hidden = false;
-    }
-
+    hideGamesList();
+    showNoResults();
     return;
   }
 
+  showGamesList();
   hideNoResults();
 
   games.forEach((game) => {
@@ -274,50 +314,41 @@ function renderGames(games) {
   });
 }
 
+
+/* ================================
+   CREATE GAME CARD
+================================ */
+
 function createGameCard(game) {
+  const image = game.background_image || createPlaceholder();
 
-  const title = escapeHTML(
-    game.name || "Unknown Game"
-  );
-
-  const image =
-    game.background_image ||
-    createPlaceholder(title);
-
-  const rating =
-    typeof game.rating === "number"
-      ? game.rating.toFixed(1)
-      : "N/A";
+  const title = escapeHTML(game.name || "Unknown Game");
 
   const releaseDate = game.released
     ? formatDate(game.released)
     : "Release date unavailable";
 
-  const safeImage = escapeHTML(image);
+  const rating = game.rating
+    ? `${game.rating.toFixed(1)} / 5`
+    : "No rating";
 
   return `
     <article class="game">
-
       <div class="game__image--wrapper">
-
         <img
-          src="${safeImage}"
-          alt="${title} cover art"
           class="game__image"
+          src="${image}"
+          alt="${title}"
           loading="lazy"
-          onerror="this.src='${createPlaceholder(title)}'"
-        />
-
+        >
       </div>
 
       <div class="game__content">
-
         <h3 class="game__title">
           ${title}
         </h3>
 
         <div class="game__meta">
-
           <span class="game__rating">
             ★ ${rating}
           </span>
@@ -325,80 +356,19 @@ function createGameCard(game) {
           <span class="game__date">
             ${releaseDate}
           </span>
-
         </div>
-
       </div>
-
     </article>
   `;
 }
 
-// ==========================================
-// LOADING STATE
-// ==========================================
 
-function showLoading() {
-
-  if (loadingState) {
-    loadingState.hidden = false;
-  }
-
-}
-
-function hideLoading() {
-
-  if (loadingState) {
-    loadingState.hidden = true;
-  }
-
-}
-
-// ==========================================
-// ERROR STATE
-// ==========================================
-
-function showError(message) {
-
-  if (apiError) {
-    apiError.hidden = false;
-  }
-
-  if (apiErrorMessage) {
-    apiErrorMessage.textContent = message;
-  }
-
-}
-
-function hideError() {
-
-  if (apiError) {
-    apiError.hidden = true;
-  }
-
-}
-
-// ==========================================
-// NO RESULTS
-// ==========================================
-
-function hideNoResults() {
-
-  if (noResults) {
-    noResults.hidden = true;
-  }
-
-}
-
-// ==========================================
-// FORMAT DATE
-// ==========================================
+/* ================================
+   FORMAT DATE
+================================ */
 
 function formatDate(dateString) {
-
-  const date = new Date(
-    `${dateString}T00:00:00`
-  );
+  const date = new Date(dateString);
 
   if (Number.isNaN(date.getTime())) {
     return "Unknown";
@@ -407,40 +377,89 @@ function formatDate(dateString) {
   return date.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
-    year: "numeric",
+    year: "numeric"
   });
-
 }
 
-// ==========================================
-// HTML SAFETY
-// ==========================================
+
+/* ================================
+   ESCAPE HTML
+================================ */
 
 function escapeHTML(value) {
-
   return String(value)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
-
 }
 
-// ==========================================
-// IMAGE FALLBACK
-// ==========================================
 
-function createPlaceholder(title) {
+/* ================================
+   PLACEHOLDER IMAGE
+================================ */
 
-  const safeTitle = String(title)
-    .replace(/&/g, "and")
-    .replace(/[^a-zA-Z0-9 ]/g, "")
-    .slice(0, 28);
+function createPlaceholder() {
+  return "https://placehold.co/600x400/171b1e/8cff00?text=Pixel+Vault";
+}
 
-  return (
-    "https://placehold.co/800x500/171b1e/8cff00?text=" +
-    encodeURIComponent(safeTitle || "Game")
-  );
 
+/* ================================
+   LOADING
+================================ */
+
+function showLoading() {
+  loadingState.hidden = false;
+  gamesList.hidden = true;
+  noResults.hidden = true;
+  apiError.hidden = true;
+}
+
+function hideLoading() {
+  loadingState.hidden = true;
+}
+
+
+/* ================================
+   ERROR
+================================ */
+
+function showError(message) {
+  loadingState.hidden = true;
+  gamesList.hidden = true;
+  noResults.hidden = true;
+  apiError.hidden = false;
+
+  apiErrorMessage.textContent = message;
+}
+
+function hideError() {
+  apiError.hidden = true;
+}
+
+
+/* ================================
+   NO RESULTS
+================================ */
+
+function showNoResults() {
+  noResults.hidden = false;
+}
+
+function hideNoResults() {
+  noResults.hidden = true;
+}
+
+
+/* ================================
+   GAMES LIST VISIBILITY
+================================ */
+
+function showGamesList() {
+  gamesList.hidden = false;
+}
+
+function hideGamesList() {
+  gamesList.hidden = true;
 }
