@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Pixel Vault - a responsive video game discovery store powered by the RAWG API." />
+  <title>Pixel Vault | Game Store</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <nav>
+    <div class="container">
+      <div class="row nav__row">
+        <a href="#landing-page" class="nav__logo"><span class="green">PIXEL</span> VAULT</a>
+        <div class="nav__link--list">
+          <a href="#landing-page" class="nav__link nav__link--anchor">Home</a>
+          <a href="#games" class="nav__link nav__link--anchor">Games</a>
+          <a href="#about" class="nav__link nav__link--anchor">About</a>
+        </div>
+        <button class="nav__menu click" id="nav__menu" aria-label="Open menu">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <section id="landing-page">
+      <div class="container">
+        <div class="row header">
+          <div class="header__content">
+            <p class="header__subtitle">WELCOME TO PIXEL VAULT</p>
+            <h1 class="title">DISCOVER YOUR NEXT <span class="green">ADVENTURE.</span></h1>
+            <p class="header__para">Search and discover games using live data from the RAWG video game database.</p>
+            <a href="#games" class="header__button header__button--primary">EXPLORE GAMES</a>
+          </div>
+          <div class="header__image" aria-hidden="true">
+            <div class="header__gamepad">🎮</div>
+            <div class="header__glow"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="games">
+      <div class="container">
+        <div class="row">
+          <div class="section__heading">
+            <p class="section__subtitle">BROWSE THE LIBRARY</p>
+            <h2 class="section__title">FIND YOUR <span class="green">GAME.</span></h2>
+            <p class="section__para">Search the RAWG game database and sort the results to find something you'll want to play.</p>
+          </div>
+
+          <div class="games__controls">
+            <div class="games__search">
+              <label for="search__input" class="visually-hidden">Search games</label>
+              <input type="search" id="search__input" class="search__input" placeholder="Search for a game..." autocomplete="off" />
+              <button type="button" id="search__button" class="search__button click">SEARCH</button>
+            </div>
+            <div class="games__filters">
+              <label for="sort__select">Sort by:</label>
+              <select id="sort__select" class="sort__select">
+                <option value="default">Featured</option>
+                <option value="az">Alphabetical: A to Z</option>
+                <option value="za">Alphabetical: Z to A</option>
+                <option value="newest">Newest to Oldest</option>
+                <option value="oldest">Oldest to Newest</option>
+              </select>
+            </div>
+          </div>
+
+          <p id="results__count" class="results__count"></p>
+
+          <div id="loading__state" class="loading__state" aria-live="polite">
+            <div class="loading__spinner"></div>
+            <p>Loading games...</p>
+          </div>
+
+          <div id="api__error" class="api__error" aria-live="polite" hidden>
+            <h3>Unable to load games</h3>
+            <p id="api__error--message">Please check your API key and try again.</p>
+            <button type="button" id="retry__button" class="retry__button">TRY AGAIN</button>
+          </div>
+
+          <div id="games__list" class="games__list"></div>
+
+          <div id="no__results" class="no__results" hidden>
+            <h3>No games found</h3>
+            <p>Try another search or change the sorting option.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="about">
+      <div class="container">
+        <div class="row">
+          <div class="about__wrapper">
+            <div class="about__content">
+              <p class="section__subtitle">ABOUT THE PROJECT</p>
+              <h2 class="section__title">BUILT FOR <span class="green">GAMERS.</span></h2>
+              <p class="section__para">Pixel Vault is a frontend development project built with HTML, CSS, and JavaScript. Game information is fetched dynamically from the RAWG API, then displayed and sorted using JavaScript.</p>
+              <p class="section__para">The project demonstrates API fetching, search, sorting, dynamic rendering, loading states, and responsive web design.</p>
+            </div>
+            <div class="about__stats">
+              <div class="about__stat"><span class="green">01</span><p>API INTEGRATION</p></div>
+              <div class="about__stat"><span class="green">02</span><p>DYNAMIC RESULTS</p></div>
+              <div class="about__stat"><span class="green">03</span><p>RESPONSIVE DESIGN</p></div>
+              <div class="about__stat"><span class="green">04</span><p>JAVASCRIPT SEARCH</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">
+      <div class="row footer__row">
+        <a href="#landing-page" class="footer__logo"><span class="green">PIXEL</span> VAULT</a>
+        <p class="footer__copyright">Built with HTML, CSS &amp; JavaScript using the RAWG API.</p>
+        <a href="#landing-page" class="footer__back-top click" aria-label="Back to top">↑</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="./index.js"></script>
+</body>
+</html>
